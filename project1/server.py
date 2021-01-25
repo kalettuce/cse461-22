@@ -4,9 +4,6 @@ import string
 import struct
 import threading
 
-#TODO: REMOVE
-import sys
-
 # student ID
 ID = 690
 
@@ -27,12 +24,12 @@ Returns a packet with the given information, as bytes in big-endian order
 """
 def make_packet(msg_len, psec, step, msg):
     header = struct.pack('>iihh', msg_len, psec, step, ID)
-    pad_len = (4 - len(msg) % 4) % 4;
+    pad_len = (4 - len(msg) % 4) % 4
     return header + msg + pad_len * b'\x00'
 
 UDP_PORT = 12235
 
-def thread_function(data_a, client_address, stream):
+def thread_function(data_a, client_address):
     # stage a
     if not validate_header(data_a):
         return
@@ -55,13 +52,16 @@ def thread_function(data_a, client_address, stream):
     udp_socket_b.settimeout(3)
     table = [False for i in range(num_a)]
 
-    # always drop first packet
-    udp_socket_b.recv(4096)
-
     # loop to receive all stage b packets
     i = 0
-    while i < num_a:
-        data_b = udp_socket_b.recv(4096)
+    while i < num_a+1:
+        try:
+            data_b = udp_socket_b.recv(4096)
+        except timeout:
+            return
+        if (i == 0):
+            i += 1
+            continue
         if not validate_header(data_b, secret_a):
             udp_socket_b.close()
             return
@@ -103,33 +103,35 @@ def thread_function(data_a, client_address, stream):
 
     # stage d
     for i in range(num_c):
-        data_d = tcp_conn.recv(4096)
+        data_d = tcp_conn.recv(12 + len_c + (4-len_c%4)%4)
         if not validate_header(data_d, secret_c):
+            print(1)
             tcp_conn.close()
             tcp_socket.close()
             return
         length, = struct.unpack('>i', data_d[:4])
         if length != len_c:
+            print(2)
             tcp_conn.close()
             tcp_socket.close()
             return
-        for c in data_d[12:12+length]:
-            if c != char_c:
-                tcp_conn.close()
-                tcp_socket.close()
-                return
-        
-        secret_d = random.randrange(0x7fffffff)
-        message_d = struct.pack('>i', secret_d)
-        packet_d = make_packet(4, secret_c, 2, message_d)
-        stream.write(len(packet_d))
-        tcp_conn.send(packet_d)
-        #tcp_conn.close()
-        #tcp_socket.close()
+        # verify the payload
+        if char_c*length != data_d[12:12+length]:
+            print(3)
+            print(char_c*length)
+            print(data_d[12:12+length])
+            tcp_conn.close()
+            tcp_socket.close()
+            return
+    secret_d = random.randrange(0x7fffffff)
+    message_d = struct.pack('>i', secret_d)
+    packet_d = make_packet(4, secret_c, 2, message_d)
+    tcp_conn.send(packet_d)
+    #tcp_conn.close()
+    #tcp_socket.close()
 
 
 if __name__ == "__main__":
-    sys.stdout.write('test')
     udp_socket = socket(AF_INET, SOCK_DGRAM)
     udp_socket.bind(('', UDP_PORT))
     
@@ -137,5 +139,5 @@ if __name__ == "__main__":
         # receive and inspect the data
         data_a, client_address = udp_socket.recvfrom(4096)
         t = threading.Thread(target=thread_function,\
-                             args=(data_a, client_address, sys.stdout))
+                             args=(data_a, client_address))
         t.start()
