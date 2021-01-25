@@ -3,6 +3,7 @@ import struct
 
 ATTU2 = '128.208.1.138'
 ATTU3 = '128.208.1.139'
+ATTU8 = '128.208.1.141'
 UDP_PORT = 12235
 ID = 423
 
