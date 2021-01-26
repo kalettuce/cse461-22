@@ -16,6 +16,11 @@ def make_packet(msg_len, psec, step, msg):
     pad_len = (4 - len(msg) % 4) % 4
     return header + msg + pad_len * b'\x00'
 
+# returns header as a string "[length, psec, stage, ID]"
+def str_header(header):
+    pay_len, psec, stage, ID = struct.unpack('>iihh', header)
+    return "[" + str(pay_len) + ", " + str(psec) + ", " + str(stage) + ", " + str(ID) + "]"
+
 # stage a
 print("--- STAGE A ---")
 udp_socket = socket(AF_INET, SOCK_DGRAM)
@@ -24,8 +29,8 @@ udp_socket.sendto(packet, (ATTU2, UDP_PORT))
 data_A = udp_socket.recv(4096)
 
 # stage b
-pay_len, psec, stage, ID, num, length, udp_port_2, secret_A = struct.unpack('>iihhiiii', data_A)
-print("stage a2 server response header: [", pay_len, ",", psec, ",", stage, ",", ID, "]")
+num, length, udp_port_2, secret_A = struct.unpack('>iiii', data_A[12:])
+print("stage a2 server response header:", str_header(data_A[:12]))
 print("Secret A:", secret_A, "\n")
 print("--- STAGE B ---")
 i = 0
@@ -45,8 +50,8 @@ while (i < num):
 data_B = udp_socket.recv(4096)
 
 # stage c
-pay_len, psec, stage, ID, tcp_port, secret_B = struct.unpack('>iihhii', data_B)
-print("stage b2 server response header: [", pay_len, ",", psec, ",", stage, ",", ID, "]")
+tcp_port, secret_B = struct.unpack('>ii', data_B[12:])
+print("stage b2 server response header:", str_header(data_B[:12]))
 print("Secret B:", secret_B, "\n")
 print("--- STAGE C ---")
 tcp_socket = socket(AF_INET, SOCK_STREAM)
@@ -54,8 +59,8 @@ tcp_socket.connect((ATTU2, tcp_port))
 data_C = tcp_socket.recv(4096)
 
 # stage d
-pay_len, psec, stage, ID, num_2, length_2, secret_C, c = struct.unpack('>iihhiiii', data_C)
-print("stage c2 server response header: [", pay_len, ",", psec, ",", stage, ",", ID, "]")
+num_2, length_2, secret_C, c = struct.unpack('>iiii', data_C[12:])
+print("stage c2 server response header:", str_header(data_C[:12]))
 print("Secret C:", secret_C, "\n")
 print("--- STAGE D ---")
 # extracting the character from the original data with padding
@@ -65,7 +70,7 @@ for i in range(num_2):
     packet = make_packet(len(message), secret_C, 1, message)
     tcp_socket.send(packet)
 data_D = tcp_socket.recv(4096)
-pay_len, psec, stage, ID, secret_D = struct.unpack('>iihhi', data_D)
-print("stage d2 server response header: [", pay_len, ",", psec, ",", stage, ",", ID, "]")
+secret_D = struct.unpack('>i', data_D[12:])
+print("stage d2 server response header:", str_header(data_D[:12]))
 print("Secret D:", secret_D)
 print("done")
