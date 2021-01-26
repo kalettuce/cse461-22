@@ -6,6 +6,7 @@ import threading
 
 # student ID
 ID = 690
+UDP_PORT = 12235
 
 def validate_header(data, expected_secret = -1):
     if len(data) < 12:
@@ -27,8 +28,6 @@ def make_packet(msg_len, psec, step, msg):
     pad_len = (4 - len(msg) % 4) % 4
     return header + msg + pad_len * b'\x00'
 
-UDP_PORT = 12235
-
 def thread_function(data_a, client_address):
     # stage a
     if not validate_header(data_a):
@@ -41,7 +40,7 @@ def thread_function(data_a, client_address):
     len_a = random.randrange(10,25)
     udp_port_a = random.randrange(20000, 60000)
     secret_a = random.randrange(0x7fffffff)
-    message_a = struct.pack('>iiii', num_a, len_a, udp_port_a, secret_a);
+    message_a = struct.pack('>iiii', num_a, len_a, udp_port_a, secret_a)
 
     packet_a = make_packet(16, 0, 2, message_a)
     udp_socket.sendto(packet_a, client_address)
@@ -79,6 +78,11 @@ def thread_function(data_a, client_address):
             udp_socket_b.close()
             return
     tcp_port = random.randrange(30000, 60000)
+    tcp_socket = socket(AF_INET, SOCK_STREAM)
+    while(tcp_socket.connect_ex(('', tcp_port)) == 0):
+        print("tcp_port ", tcp_port, " in use, retrying")
+        tcp_port = random.randrange(30000, 60000)
+    tcp_socket.bind(('', tcp_port))
     secret_b = random.randrange(0x7fffffff)
     message_b = struct.pack('>ii', tcp_port, secret_b)
     packet_b = make_packet(8, secret_a, 2, message_b)
@@ -86,10 +90,13 @@ def thread_function(data_a, client_address):
     udp_socket_b.close()
     
     # stage c
-    tcp_socket = socket(AF_INET, SOCK_STREAM)
-    tcp_socket.bind(('', tcp_port))
-    tcp_socket.listen()
-    tcp_conn, _ = tcp_socket.accept()
+    tcp_socket.settimeout(3)
+    try:
+        tcp_socket.listen()
+        tcp_conn, _ = tcp_socket.accept()
+    except timeout:
+        print("stage c: client", client_address, "took too long to connect to tcp socket")
+        return
 
     # make packet c
     num_c = random.randrange(3, 20)
@@ -102,8 +109,12 @@ def thread_function(data_a, client_address):
     tcp_conn.send(packet_c)
 
     # stage d
+    tcp_conn.settimeout(3)
     for i in range(num_c):
-        data_d = tcp_conn.recv(12 + len_c + (4-len_c%4)%4)
+        try:
+            data_d = tcp_conn.recv(12 + len_c + (4-len_c%4)%4)
+        except timeout:
+            print("stage d: client", client_address, "took too long to send packet")
         if not validate_header(data_d, secret_c):
             print(1)
             tcp_conn.close()
@@ -127,8 +138,8 @@ def thread_function(data_a, client_address):
     message_d = struct.pack('>i', secret_d)
     packet_d = make_packet(4, secret_c, 2, message_d)
     tcp_conn.send(packet_d)
-    #tcp_conn.close()
-    #tcp_socket.close()
+    tcp_conn.close()
+    tcp_socket.close()
 
 
 if __name__ == "__main__":
