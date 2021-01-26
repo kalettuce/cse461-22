@@ -6,6 +6,8 @@ import threading
 
 # student ID
 ID = 690
+
+# modify here to change the port it runs on
 UDP_PORT = 12235
 
 def validate_header(data, expected_secret = -1):
