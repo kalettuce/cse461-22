@@ -1,7 +1,6 @@
 from socket import *
 import struct
 
-#ATTU2 = '128.208.1.138'
 ATTU2 = '128.208.1.137'
 ATTU3 = '128.208.1.139'
 ATTU8 = '128.208.1.141'
@@ -24,7 +23,7 @@ def str_header(header):
 # stage a
 print("--- STAGE A ---")
 udp_socket = socket(AF_INET, SOCK_DGRAM)
-packet = make_packet(12, 0, 1, "hello world".encode('utf-8') + b'\x00')
+packet = make_packet(12, 0, 1, "hello world".encode('ascii') + b'\x00')
 udp_socket.sendto(packet, (ATTU2, UDP_PORT))
 data_A = udp_socket.recv(4096)
 

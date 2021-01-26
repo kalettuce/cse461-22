@@ -29,6 +29,7 @@ def make_packet(msg_len, psec, step, msg):
     return header + msg + pad_len * b'\x00'
 
 def thread_function(data_a, client_address):
+    print("Connection from", client_address[0])
     # stage a
     if not validate_header(data_a):
         return
@@ -57,6 +58,8 @@ def thread_function(data_a, client_address):
         try:
             data_b = udp_socket_b.recv(4096)
         except timeout:
+            print("stage b: client", client_address[0], "timed out.")
+            udp_socket_b.close()
             return
         if (i == 0):
             i += 1
@@ -95,7 +98,7 @@ def thread_function(data_a, client_address):
         tcp_socket.listen()
         tcp_conn, _ = tcp_socket.accept()
     except timeout:
-        print("stage c: client", client_address, "took too long to connect to tcp socket")
+        print("stage c: client", client_address[0], "took too long to connect to tcp socket")
         return
 
     # make packet c
@@ -114,23 +117,21 @@ def thread_function(data_a, client_address):
         try:
             data_d = tcp_conn.recv(12 + len_c + (4-len_c%4)%4)
         except timeout:
-            print("stage d: client", client_address, "took too long to send packet")
+            print("stage d: client", client_address[0], "took too long to send packet")
         if not validate_header(data_d, secret_c):
-            print(1)
+            print("stage d: invalid header received from client", client_address[0])
             tcp_conn.close()
             tcp_socket.close()
             return
         length, = struct.unpack('>i', data_d[:4])
         if length != len_c:
-            print(2)
+            print("stage d: invalid payload received from client", client_address[0])
             tcp_conn.close()
             tcp_socket.close()
             return
         # verify the payload
         if char_c*length != data_d[12:12+length]:
-            print(3)
-            print(char_c*length)
-            print(data_d[12:12+length])
+            print("stage d: invalid payload received from client", client_address[0])
             tcp_conn.close()
             tcp_socket.close()
             return
