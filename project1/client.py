@@ -70,7 +70,7 @@ for i in range(num_2):
     packet = make_packet(len(message), secret_C, 1, message)
     tcp_socket.send(packet)
 data_D = tcp_socket.recv(4096)
-secret_D = struct.unpack('>i', data_D[12:])
+secret_D, = struct.unpack('>i', data_D[12:])
 print("stage d2 server response header:", str_header(data_D[:12]))
 print("Secret D:", secret_D)
 print("done")
