@@ -1,31 +1,35 @@
 from socket import *
 import struct
 
-#ATTU2 = '128.208.1.138'
-ATTU2 = '128.208.1.137'
+ATTU2 = '128.208.1.138'
 ATTU3 = '128.208.1.139'
 ATTU8 = '128.208.1.141'
-UDP_PORT = 12235
 ID = 423
 
-"""
-Returns a packet with the given information, as bytes in big-endian order
-"""
+# modify here to change the target addres
+TARGET = ATTU2
+UDP_PORT = 12235
+
 def make_packet(msg_len, psec, step, msg):
+    """
+    Returns a packet with the given information, as bytes in big-endian order
+    """
     header = struct.pack('>iihh', msg_len, psec, step, ID)
     pad_len = (4 - len(msg) % 4) % 4
     return header + msg + pad_len * b'\x00'
 
-# returns header as a string "[length, psec, stage, ID]"
 def str_header(header):
+    """
+    returns header as a string "[length, psec, stage, ID]"
+    """
     pay_len, psec, stage, ID = struct.unpack('>iihh', header)
     return "[" + str(pay_len) + ", " + str(psec) + ", " + str(stage) + ", " + str(ID) + "]"
 
 # stage a
 print("--- STAGE A ---")
 udp_socket = socket(AF_INET, SOCK_DGRAM)
-packet = make_packet(12, 0, 1, "hello world".encode('utf-8') + b'\x00')
-udp_socket.sendto(packet, (ATTU2, UDP_PORT))
+packet = make_packet(12, 0, 1, "hello world".encode('ascii') + b'\x00')
+udp_socket.sendto(packet, (TARGET, UDP_PORT))
 data_A = udp_socket.recv(4096)
 
 # stage b
@@ -38,7 +42,7 @@ udp_socket.settimeout(0.5)
 while (i < num):
     message = struct.pack('>i', i) + b'\x00' * length
     packet = make_packet(len(message), secret_A, 1, message)
-    udp_socket.sendto(packet, (ATTU2, udp_port_2))
+    udp_socket.sendto(packet, (TARGET, udp_port_2))
     # if no response, send again by not incrementing i
     try:
         data_B = udp_socket.recv(4096)
@@ -55,7 +59,7 @@ print("stage b2 server response header:", str_header(data_B[:12]))
 print("Secret B:", secret_B, "\n")
 print("--- STAGE C ---")
 tcp_socket = socket(AF_INET, SOCK_STREAM)
-tcp_socket.connect((ATTU2, tcp_port))
+tcp_socket.connect((TARGET, tcp_port))
 data_C = tcp_socket.recv(4096)
 
 # stage d
