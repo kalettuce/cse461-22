@@ -47,6 +47,7 @@ class Part3Controller (object):
       exit(1)
   
   def norm_switch_setup(self):
+    # flood all ip and arp packets
     msg = of.ofp_flow_mod()
     msg.priority = 1
     msg.match.dl_type = 0x0800
@@ -58,15 +59,17 @@ class Part3Controller (object):
     msg.match.nw_proto = None
     self.connection.send(msg)
 
-    # block all ICMP traffic from untrusted host
+    # drop icmp from hnotrust
     notrust_rule = of.ofp_flow_mod()
     notrust_rule.priority = 5
     notrust_rule.match.dl_type = 0x0800
     notrust_rule.match.nw_proto = 1
     notrust_rule.match.nw_src = IPAddr((IPS["hnotrust"])[0])
-    self.connection.send(notrust_rule)   
+    self.connection.send(notrust_rule)
   
+  # sets up arp rule with priority n, ip rule with priority n + 5
   def core_rule_setup(self, host, n):
+    # forward all arp and ip packets to 'host' on port 'n' 
     core_rule = of.ofp_flow_mod()
     core_rule.priority = n
     core_rule.match.nw_dst = IPAddr((IPS[host])[0])
@@ -92,74 +95,17 @@ class Part3Controller (object):
 
   def cores21_setup(self):
     #put core switch rules here
-
-    """core used for routing only
-    core_rule_ip = of.ofp_flow_mod()
-    core_rule_ip.priority = 11
-    core_rule_ip.match.dl_type = 0x0800
-    core_rule_ip.match.nw_proto = 1
-    core_rule_ip.match.nw_dst = IPAddr((IPS["h10"])[0])
-    core_rule_ip.actions = {of.ofp_action_output(port = 1)}
-    self.connection.send(core_rule_ip)
-
-    core_rule_ip.priority = 10
-    core_rule_ip.match.nw_dst = IPAddr((IPS["h20"])[0])
-    core_rule_ip.actions = {of.ofp_action_output(port = 2)}
-    self.connection.send(core_rule_ip)
-
-    core_rule_ip.priority = 9
-    core_rule_ip.match.nw_dst = IPAddr((IPS["h30"])[0])
-    core_rule_ip.actions = {of.ofp_action_output(port = 3)}
-    self.connection.send(core_rule_ip)
-    
-    core_rule_ip.priority = 8
-    core_rule_ip.match.nw_dst = IPAddr((IPS["serv1"])[0])
-    core_rule_ip.actions = {of.ofp_action_output(port = 4)}
-    self.connection.send(core_rule_ip)
-    
-    core_rule_ip.priority = 7
-    core_rule_ip.match.nw_dst = IPAddr((IPS["hnotrust"])[0])
-    core_rule_ip.actions = {of.ofp_action_output(port = 5)}
-    self.connection.send(core_rule_ip)
-
-    core_rule_arp = of.ofp_flow_mod()
-    core_rule_arp.priority = 6
-    core_rule_arp.match.dl_type = 0x0806
-    core_rule_arp.match.nw_dst = IPAddr((IPS["h10"])[0])
-    core_rule_arp.actions = {of.ofp_action_output(port = 1)}
-    self.connection.send(core_rule_arp)
-
-    core_rule_arp.priority = 5
-    core_rule_arp.match.nw_dst = IPAddr((IPS["h20"])[0])
-    core_rule_arp.actions = {of.ofp_action_output(port = 2)}
-    self.connection.send(core_rule_arp)
-
-    core_rule_arp.priority = 4
-    core_rule_arp.match.nw_dst = IPAddr((IPS["h30"])[0])
-    core_rule_arp.actions = {of.ofp_action_output(port = 3)}
-    self.connection.send(core_rule_arp)
-    
-    core_rule_arp.priority = 3
-    core_rule_arp.match.nw_dst = IPAddr((IPS["serv1"])[0])
-    core_rule_arp.actions = {of.ofp_action_output(port = 4)}
-    self.connection.send(core_rule_arp)
-    
-    core_rule_arp.priority = 2
-    core_rule_arp.match.nw_dst = IPAddr((IPS["hnotrust"])[0])
-    core_rule_arp.actions = {of.ofp_action_output(port = 5)}
-    self.connection.send(core_rule_arp)"""
-
     self.core_rule_setup("h10", 1)
     self.core_rule_setup("h20", 2)
     self.core_rule_setup("h30", 3)
     self.core_rule_setup("serv1", 4)
     self.core_rule_setup("hnotrust", 5)
 
-
   def dcs31_setup(self):
     #put datacenter switch rules here
     self.norm_switch_setup()
-    
+
+    # drop all ip packets from hnotrust
     notrust_rule = of.ofp_flow_mod()
     notrust_rule.priority = 4
     notrust_rule.match.dl_type = 0x0800
