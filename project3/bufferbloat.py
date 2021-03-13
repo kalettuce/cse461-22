@@ -74,10 +74,10 @@ class BBTopo(Topo):
         # Here I have created a switch.  If you change its name, its
         # interface names will change from s0-eth1 to newname-eth1.
         switch = self.addSwitch('s0')
-        
+        print(args) 
         # TODO: Add links with appropriate characteristics
-        self.addLink(host1, switch, bw = args.bw_host, delay = args.delay, max_queue_size = args.maxq, use_htb = True)
-        self.addLink(host2, switch, bw = args.bw_net, delay = args.delay, max_queue_size = args.maxq, use_htb = True)
+        self.addLink(host1, switch, bw = args.bw_host, delay = args.delay, max_queue_size = args.maxq)
+        self.addLink(host2, switch, bw = args.bw_net, delay = args.delay, max_queue_size = args.maxq)
 # Simple wrappers around monitoring utilities.  You are welcome to
 # contribute neatly written (using classes) monitoring scripts for
 # Mininet!
@@ -93,7 +93,7 @@ def start_iperf(net):
     # long lived TCP flow.
     print("Starting iperf client...")
     h1 = net.get('h1')
-    proc = h1.popen('iperf -c h2 -w 16m -t 9999999 > iperf.txt', shell=True)
+    proc = h1.popen("iperf -c " + h2.IP() + " -w 16m -t 999999999 > output/iperf.txt", shell=True)
     return proc
        
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
@@ -111,21 +111,22 @@ def start_ping(net):
     # to popen, you can redirect cmd's output using shell syntax.
     # i.e. ping ... > /path/to/ping.
     h1 = net.get('h1')
-    proc = h1.popen('ping h2 -c -i 0.1 > ping.txt', shell=True)
-    sleep(1)
-    return proc
+    h2 = net.get('h2')
+    print("Starting ping train...")
+    return h1.popen("ping -i 0.1 " + h2.IP() + " > output/ping.txt", shell=True)
 
 def start_webserver(net):
     h1 = net.get('h1')
-    proc = h1.popen("python http/webserver.py", shell=True)
+    print("Starting webserver...")
+    proc = h1.popen("python http/webserver.py > output/download.txt", shell=True)
     sleep(1)
     return [proc]
 
-def measure_download(net):
+def measure_download(net, num):
+    h1 = net.get('h1')
     h2 = net.get('h2')
-    proc = h2.popen('curl -o /dev/null -s -w &{total_time} h1 > download.txt', shell=True)
-    sleep(1)
-    return [proc]
+    proc = h2.popen("curl -o /dev/null -s -w '" + str(num) + ": %{time_total}\n' " + h1.IP() + "/http/index.html 1>> output/download.txt 2> err.txt", shell=True)
+    return proc
 
 def bufferbloat():
     if args.http3:
@@ -153,8 +154,8 @@ def bufferbloat():
                       outfile='%s/q.txt' % (args.dir))
     
     # TODO: Start iperf, webservers, etc.
-    iproc = start_iperf(net)
-    pproc = start_ping(net)
+    start_iperf(net)
+    start_ping(net)
     start_webserver(net)
 
     # TODO: measure the time it takes to complete webpage transfer
@@ -169,16 +170,18 @@ def bufferbloat():
     # Hint: have a separate function to do this and you may find the
     # loop below useful.
     start_time = time()
+    
     while True:
         # do the measurement (say) 3 times.
         sleep(5)
-        measure_download(net)
+        for i in range (0,3):
+            measure_download(net, i).wait()
         now = time()
         delta = now - start_time
         if delta > args.time:
             break
         print("%.1fs left..." % (args.time - delta))
-
+    
     # TODO: compute average (and standard deviation) of the fetch
     # times.  You don't need to plot them.  Just note it in your
     # README and explain.
@@ -187,8 +190,6 @@ def bufferbloat():
     # debug.  It allows you to run arbitrary commands inside your
     # emulated hosts h1 and h2.
     CLI(net)
-    iproc.communicate()
-    pproc.communicate()
     qmon.terminate()
     net.stop()
     # Ensure that all processes you create within Mininet are killed.
