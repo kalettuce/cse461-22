@@ -93,7 +93,7 @@ def start_iperf(net):
     # long lived TCP flow.
     print("Starting iperf client...")
     h1 = net.get('h1')
-    proc = h1.popen("iperf -c " + h2.IP() + " -w 16m -t 999999999 > output/iperf.txt", shell=True)
+    proc = h1.popen("iperf -c " + h2.IP() + " -t 999999999 > output/iperf.txt", shell=True)
     return proc
        
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
@@ -150,7 +150,7 @@ def bufferbloat():
     # interface?  The interface numbering starts with 1 and increases.
     # Depending on the order you add links to your network, this
     # number may be 1 or 2.  Ensure you use the correct number.
-    qmon = start_qmon(iface='s0-eth1',
+    qmon = start_qmon(iface='s0-eth2',
                       outfile='%s/q.txt' % (args.dir))
     
     # TODO: Start iperf, webservers, etc.
