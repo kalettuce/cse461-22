@@ -20,4 +20,5 @@ for qsize in 20 100; do
     # the required naming convention when submitting your tarball.
     python3 plot_queue.py -f output/q.txt -o output/bbr-buffer$dir.png
     python3 plot_ping.py -f output/ping.txt -o output/bbr-rtt$dir.png
+    rm -f output/*.txt
 done

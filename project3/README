@@ -1,0 +1,65 @@
+Name: Keith Jiang
+UWNetID: jiangz34
+
+Name: Justin Nguyen
+UWNetID: nguyj329
+
+Instructions to reproduce the results:
+  execute the follow commands in the project3/ folder:
+
+  $ sudo mn -c
+  $ sudo ./run.sh
+
+  The graphs will be generated and saved to project3/output/
+
+  Similarly for the BBR:
+
+  $ sudo mn -c
+  $ sudo ./run_bbr.sh
+
+  The graphs of the BBR runs will also be generated and saved to project3/output/
+
+Answers to the questions:
+Part 2
+  1. 
+    - When q = 20:
+      * average latency: 0.2565s
+      * standard deviation: 0.1945
+    - When q = 100:
+      * average latency: 1.140s
+      * standard deviation: 0.4421
+  2. We observed that the fetch time is shorter with a smaller queue size of 20; with a higher
+     queue size, the bloated buffer will take longer to drain, and the packets will be stuck in the
+     buffer for a longer period of time, instead of (1) being sent on its way or (2) being dropped
+     to notify the sender about the congestion.
+  3. Maximum transimit queue length is 1000, as reported by ifconfig; assuming a drain speed of
+     100 Mbit/s, the maximum drain time could be roughly 5120 seconds before a packet can be
+     released from the queue.
+  4. Both graphs show a sawtooth pattern, but on average the RTT reported in the case with queue
+     size 20 is less than the RTT reported with queue size 100.
+  5. Concerning just the bufferbloat issue, we can reduce the queue length to mitigate its impact,
+     according to what we've observed so far. A second approach would be to set up the router so
+     it sends the sender an ICMP notification when the queue is close to being full, such that the
+     sender can perform the multiplicative decrease in response, giving the queue more time to
+     drain.
+
+Part 3
+  1.
+    - When q = 20:
+      * average latency: 0.1416s
+      * standard deviation: 0.0256
+    - When q = 100:
+      * average latency: 0.1410s
+      * standard deviation: 0.0407
+  2. The average latency is roughly even, with the q=100 case having a slightly lower average
+     latency and a higher standard deviation. This is different (or even opposite) from what we
+     observed in Part 2, where the case of q=20 had a significantly lower latency than the q=100
+     case.
+  3. The buffer is never filled to their limit in the graphs for BBR, while in the Reno case, the
+     buffer is always filled to the limit before a multiplicative decrease from the sender is
+     performed. BBR is able to achieve this because it uses the RTT of sent packets to construct
+     a model of how full the buffer of the router is and slows down with the sending rate when it
+     notices an upward trend of RTT.
+  4. BBR definitely solves bufferbloat in the majority of cases, where congestion is the only
+     significant contributing factor to RTT, and BBR would be able to predict a congestion without
+     having a packet loss in those situations, effectively preventing buffers from getting bloated.

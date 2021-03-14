@@ -93,7 +93,7 @@ def start_iperf(net):
     # long lived TCP flow.
     print("Starting iperf client...")
     h1 = net.get('h1')
-    proc = h1.popen("iperf -c " + h2.IP() + " -t 999999999 > output/iperf.txt", shell=True)
+    proc = h1.popen("iperf -c " + h2.IP() + " -t 999999999 > output/iperf" + str(args.maxq) + ".txt", shell=True)
     return proc
        
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
@@ -118,14 +118,15 @@ def start_ping(net):
 def start_webserver(net):
     h1 = net.get('h1')
     print("Starting webserver...")
-    proc = h1.popen("python http/webserver.py > output/download.txt", shell=True)
+    proc = h1.popen("python http/webserver.py", shell=True)
+    proc1 = h1.popen("> output/download" + str(args.maxq) + ".txt", shell=True)
     sleep(1)
     return [proc]
 
 def measure_download(net, num):
     h1 = net.get('h1')
     h2 = net.get('h2')
-    proc = h2.popen("curl -o /dev/null -s -w '" + str(num) + ": %{time_total}\n' " + h1.IP() + "/http/index.html 1>> output/download.txt 2> err.txt", shell=True)
+    proc = h2.popen("curl -o /dev/null -s -w '" + str(num) + ": %{time_total}\n' " + h1.IP() + "/http/index.html 1>> output/download" + str(args.maxq) + ".txt", shell=True)
     return proc
 
 def bufferbloat():
@@ -189,7 +190,7 @@ def bufferbloat():
     # Hint: The command below invokes a CLI which you can use to
     # debug.  It allows you to run arbitrary commands inside your
     # emulated hosts h1 and h2.
-    CLI(net)
+    # CLI(net)
     qmon.terminate()
     net.stop()
     # Ensure that all processes you create within Mininet are killed.
